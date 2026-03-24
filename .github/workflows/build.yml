@@ -32,12 +32,7 @@ jobs:
 
       - name: Create launcher script
         run: |
-          cat > build/linux/x64/release/bundle/lanshare.sh << 'EOF'
-          #!/bin/bash
-          SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-          export LD_LIBRARY_PATH="$SCRIPT_DIR/lib:$LD_LIBRARY_PATH"
-          exec "$SCRIPT_DIR/lan_share" "$@"
-          EOF
+          printf '#!/bin/bash\nSCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nexport LD_LIBRARY_PATH="$SCRIPT_DIR/lib:$LD_LIBRARY_PATH"\nexec "$SCRIPT_DIR/lan_share" "$@"\n' > build/linux/x64/release/bundle/lanshare.sh
           chmod +x build/linux/x64/release/bundle/lanshare.sh
 
       - name: Package tar.gz
