@@ -1,0 +1,30 @@
+import 'dart:io';
+import 'package:mime/mime.dart';
+
+class FileUtils {
+  FileUtils._();
+
+  static String formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+  }
+
+  static String getMimeType(String filePath) {
+    return lookupMimeType(filePath) ?? 'application/octet-stream';
+  }
+
+  static Future<String> getDownloadDirectory() async {
+    final home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '.';
+    final dir = Directory('$home/LANShare');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir.path;
+  }
+}
