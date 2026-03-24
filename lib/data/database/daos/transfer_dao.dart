@@ -15,6 +15,11 @@ class TransferDao extends DatabaseAccessor<AppDatabase> with _$TransferDaoMixin 
         .watch();
   }
 
+  Future<FileTransfer?> getTransfer(String id) {
+    return (select(fileTransfers)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
   Stream<FileTransfer?> watchTransfer(String id) {
     return (select(fileTransfers)..where((t) => t.id.equals(id)))
         .watchSingleOrNull();

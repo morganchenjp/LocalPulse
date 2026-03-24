@@ -41,13 +41,17 @@ class NsdDiscoveryService {
   NsdDiscoveryService({
     required String deviceId,
     required int serverPort,
+    String? nickname,
   })  : _deviceId = deviceId,
-        _serverPort = serverPort;
+        _serverPort = serverPort,
+        _nickname = nickname;
+
+  final String? _nickname;
 
   Future<void> startAdvertising() async {
     if (kIsWeb) return;
 
-    final deviceName = PlatformUtils.deviceName;
+    final deviceName = _nickname?.isNotEmpty == true ? _nickname! : PlatformUtils.deviceName;
     final service = BonsoirService(
       name: '$deviceName-${_deviceId.substring(0, 4)}',
       type: AppConstants.serviceType,

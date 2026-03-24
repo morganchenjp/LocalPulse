@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/services/settings_service.dart';
 import '../../core/utils/network_utils.dart';
 import '../../core/utils/platform_utils.dart';
 import '../../data/database/app_database.dart';
@@ -14,6 +15,17 @@ import '../../data/services/server/handlers/message_handler.dart';
 import '../../data/services/server/handlers/file_handler.dart';
 import '../../data/services/server/handlers/clipboard_handler.dart';
 import '../../data/services/transfer/file_send_service.dart';
+
+// ─── Settings Service ───
+
+final settingsServiceProvider = FutureProvider<SettingsService>((ref) async {
+  return SettingsService.create();
+});
+
+// ─── User Settings (reactive state, synced with SharedPreferences) ───
+
+final nicknameProvider = StateProvider<String>((ref) => '');
+final downloadDirProvider = StateProvider<String>((ref) => '');
 
 // ─── Device Identity ───
 
@@ -173,9 +185,12 @@ final discoveryServiceProvider =
   final port = await ref.watch(serverPortProvider.future);
   final deviceId = ref.read(deviceIdProvider);
 
+  final nickname = ref.read(nicknameProvider);
+
   final service = NsdDiscoveryService(
     deviceId: deviceId,
     serverPort: port,
+    nickname: nickname.isNotEmpty ? nickname : null,
   );
 
   await service.startAdvertising();

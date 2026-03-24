@@ -17,7 +17,20 @@ class FileUtils {
     return lookupMimeType(filePath) ?? 'application/octet-stream';
   }
 
+  static String? _customDownloadDir;
+
+  static void setDownloadDirectory(String? path) {
+    _customDownloadDir = path;
+  }
+
   static Future<String> getDownloadDirectory() async {
+    if (_customDownloadDir != null && _customDownloadDir!.isNotEmpty) {
+      final dir = Directory(_customDownloadDir!);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      return dir.path;
+    }
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '.';

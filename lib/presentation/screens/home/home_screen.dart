@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/file_utils.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/app_top_bar.dart';
 import 'peer_panel.dart';
@@ -21,8 +22,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize server and discovery on startup
-    Future.microtask(() {
+    Future.microtask(() async {
+      // Load user settings from SharedPreferences
+      final settings = await ref.read(settingsServiceProvider.future);
+      ref.read(nicknameProvider.notifier).state = settings.nickname;
+      ref.read(downloadDirProvider.notifier).state = settings.downloadDir;
+      FileUtils.setDownloadDirectory(settings.hasCustomDownloadDir ? settings.downloadDir : null);
+
+      // Initialize server and discovery
       ref.read(httpServerProvider);
       ref.read(discoveryServiceProvider);
     });

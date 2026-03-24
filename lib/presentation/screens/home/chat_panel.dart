@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/utils/file_opener.dart';
 import '../../../core/utils/file_utils.dart';
 import '../../../data/database/app_database.dart';
 import '../../providers/app_providers.dart';
@@ -20,11 +21,29 @@ class ChatPanel extends ConsumerStatefulWidget {
 class _ChatPanelState extends ConsumerState<ChatPanel> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  late final FocusNode _inputFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _inputFocusNode = FocusNode(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.enter &&
+            !HardwareKeyboard.instance.isShiftPressed) {
+          _sendMessage();
+          return KeyEventResult.handled; // consume Enter, prevent duplicate
+        }
+        return KeyEventResult.ignored;
+      },
+    );
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     super.dispose();
   }
 
@@ -236,28 +255,17 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                 onPressed: _pickAndSendFile,
               ),
               Expanded(
-                child: KeyboardListener(
-                  focusNode: FocusNode(),
-                  onKeyEvent: (event) {
-                    // Enter without Shift sends message
-                    if (event is KeyDownEvent &&
-                        event.logicalKey == LogicalKeyboardKey.enter &&
-                        !HardwareKeyboard.instance.isShiftPressed) {
-                      _sendMessage();
-                    }
-                  },
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      isDense: true,
-                    ),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _inputFocusNode,
+                  decoration: InputDecoration(
+                    hintText: 'Type a message...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    isDense: true,
                   ),
+                  maxLines: null,
+                  textInputAction: TextInputAction.newline,
                 ),
               ),
               const SizedBox(width: 8),
@@ -359,7 +367,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _FileBubble extends StatelessWidget {
+class _FileBubble extends ConsumerWidget {
   final Message message;
   final bool isOutgoing;
   final String timeStr;
@@ -369,10 +377,70 @@ class _FileBubble extends StatelessWidget {
   const _FileBubble({required this.message, required this.isOutgoing,
     required this.timeStr, required this.colorScheme, required this.theme});
 
+  String? _getTransferId() {
+    if (message.metadata != null && message.metadata!.contains('|')) {
+      return message.metadata!.split('|').first;
+    }
+    return null;
+  }
+
+  Future<String?> _getFilePath(WidgetRef ref) async {
+    final transferId = _getTransferId();
+    if (transferId == null) return null;
+    final db = ref.read(databaseProvider);
+    final transfer = await db.transferDao.getTransfer(transferId);
+    return transfer?.filePath;
+  }
+
+  void _showContextMenu(BuildContext context, WidgetRef ref, Offset position) {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        position & const Size(1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        const PopupMenuItem(value: 'open', child: Row(children: [
+          Icon(Icons.open_in_new, size: 18), SizedBox(width: 8), Text('Open'),
+        ])),
+        const PopupMenuItem(value: 'folder', child: Row(children: [
+          Icon(Icons.folder_open, size: 18), SizedBox(width: 8), Text('Show in Folder'),
+        ])),
+        const PopupMenuItem(value: 'saveas', child: Row(children: [
+          Icon(Icons.save_alt, size: 18), SizedBox(width: 8), Text('Save As...'),
+        ])),
+      ],
+    ).then((value) async {
+      if (value == null) return;
+      final filePath = await _getFilePath(ref);
+      if (filePath == null || !context.mounted) return;
+
+      switch (value) {
+        case 'open':
+          await FileOpener.openFile(filePath);
+        case 'folder':
+          await FileOpener.showInFolder(filePath);
+        case 'saveas':
+          final dest = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save As',
+            fileName: message.content ?? 'file',
+          );
+          if (dest != null) {
+            await FileOpener.saveAs(filePath, dest);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Saved to $dest'), duration: const Duration(seconds: 2)),
+              );
+            }
+          }
+      }
+    });
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final fileName = message.content ?? 'Unknown file';
-    // metadata format: "transferId|fileSize"
     String sizeStr = '';
     if (message.metadata != null && message.metadata!.contains('|')) {
       final parts = message.metadata!.split('|');
@@ -388,6 +456,9 @@ class _FileBubble extends StatelessWidget {
             ? Icons.error_outline
             : Icons.hourglass_bottom;
 
+    // Only enable interactions for incoming completed files
+    final isInteractable = !isOutgoing;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -396,43 +467,55 @@ class _FileBubble extends StatelessWidget {
           if (isOutgoing) const Spacer(flex: 2),
           Flexible(
             flex: 5,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.insert_drive_file, color: colorScheme.primary, size: 28),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(fileName, style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+            child: GestureDetector(
+              onDoubleTap: isInteractable ? () async {
+                final filePath = await _getFilePath(ref);
+                if (filePath != null) await FileOpener.openFile(filePath);
+              } : null,
+              onSecondaryTapUp: isInteractable ? (details) {
+                _showContextMenu(context, ref, details.globalPosition);
+              } : null,
+              child: MouseRegion(
+                cursor: isInteractable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.insert_drive_file, color: colorScheme.primary, size: 28),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (sizeStr.isNotEmpty)
-                              Text('$sizeStr  ', style: theme.textTheme.labelSmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7), fontSize: 10)),
-                            Text(timeStr, style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6), fontSize: 10)),
-                            if (isOutgoing) ...[
-                              const SizedBox(width: 4),
-                              Icon(statusIcon, size: 12,
-                                color: message.status == 'failed' ? colorScheme.error : colorScheme.onSurfaceVariant),
-                            ],
+                            Text(fileName, style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (sizeStr.isNotEmpty)
+                                  Text('$sizeStr  ', style: theme.textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7), fontSize: 10)),
+                                Text(timeStr, style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6), fontSize: 10)),
+                                if (isOutgoing) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(statusIcon, size: 12,
+                                    color: message.status == 'failed' ? colorScheme.error : colorScheme.onSurfaceVariant),
+                                ],
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
