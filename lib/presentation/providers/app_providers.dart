@@ -8,7 +8,9 @@ import '../../core/utils/network_utils.dart';
 import '../../core/utils/platform_utils.dart';
 import '../../data/database/app_database.dart';
 import '../../data/services/client/peer_api_client.dart';
-import '../../data/services/discovery/nsd_discovery_service.dart';
+import '../../data/services/discovery/hybrid_discovery_service.dart';
+import '../../data/services/discovery/nsd_discovery_service.dart'
+    show DiscoveredPeer;
 import '../../data/services/clipboard/clipboard_sync_service.dart';
 import '../../data/services/server/lan_http_server.dart';
 import '../../data/services/server/handlers/message_handler.dart';
@@ -67,8 +69,9 @@ final localIpProvider = FutureProvider<String>((ref) async {
 final _incomingMessageController =
     StreamController<Map<String, dynamic>>.broadcast();
 
-final incomingMessageStreamProvider =
-    StreamProvider<Map<String, dynamic>>((ref) {
+final incomingMessageStreamProvider = StreamProvider<Map<String, dynamic>>((
+  ref,
+) {
   return _incomingMessageController.stream;
 });
 
@@ -77,8 +80,9 @@ final incomingMessageStreamProvider =
 final _incomingClipboardController =
     StreamController<Map<String, dynamic>>.broadcast();
 
-final incomingClipboardStreamProvider =
-    StreamProvider<Map<String, dynamic>>((ref) {
+final incomingClipboardStreamProvider = StreamProvider<Map<String, dynamic>>((
+  ref,
+) {
   return _incomingClipboardController.stream;
 });
 
@@ -96,16 +100,19 @@ final httpServerProvider = FutureProvider<LanHttpServer?>((ref) async {
 
       // Persist to DB
       final db = ref.read(databaseProvider);
-      await db.messageDao.insertMessage(MessagesCompanion(
-        id: Value(data['id'] as String),
-        peerId: Value(data['senderId'] as String),
-        type: Value(data['type'] as String? ?? 'text'),
-        content: Value(data['content'] as String?),
-        isOutgoing: const Value(false),
-        status: const Value('delivered'),
-        createdAt: Value(data['timestamp'] as int? ??
-            DateTime.now().millisecondsSinceEpoch),
-      ));
+      await db.messageDao.insertMessage(
+        MessagesCompanion(
+          id: Value(data['id'] as String),
+          peerId: Value(data['senderId'] as String),
+          type: Value(data['type'] as String? ?? 'text'),
+          content: Value(data['content'] as String?),
+          isOutgoing: const Value(false),
+          status: const Value('delivered'),
+          createdAt: Value(
+            data['timestamp'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+          ),
+        ),
+      );
     },
   );
 
@@ -119,29 +126,33 @@ final httpServerProvider = FutureProvider<LanHttpServer?>((ref) async {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
 
       // Store transfer record
-      await db.transferDao.insertTransfer(FileTransfersCompanion(
-        id: Value(transferId),
-        peerId: Value(senderId),
-        fileName: Value(fileName),
-        filePath: Value(data['filePath'] as String?),
-        fileSize: Value(fileSize),
-        isOutgoing: const Value(false),
-        status: const Value('transferring'),
-        checksum: Value(data['checksum'] as String?),
-        createdAt: Value(timestamp),
-      ));
+      await db.transferDao.insertTransfer(
+        FileTransfersCompanion(
+          id: Value(transferId),
+          peerId: Value(senderId),
+          fileName: Value(fileName),
+          filePath: Value(data['filePath'] as String?),
+          fileSize: Value(fileSize),
+          isOutgoing: const Value(false),
+          status: const Value('transferring'),
+          checksum: Value(data['checksum'] as String?),
+          createdAt: Value(timestamp),
+        ),
+      );
 
       // Also add a file message in chat
-      await db.messageDao.insertMessage(MessagesCompanion(
-        id: Value(transferId),
-        peerId: Value(senderId),
-        type: const Value('file'),
-        content: Value(fileName),
-        metadata: Value('$transferId|$fileSize'),
-        isOutgoing: const Value(false),
-        status: const Value('sent'),
-        createdAt: Value(timestamp),
-      ));
+      await db.messageDao.insertMessage(
+        MessagesCompanion(
+          id: Value(transferId),
+          peerId: Value(senderId),
+          type: const Value('file'),
+          content: Value(fileName),
+          metadata: Value('$transferId|$fileSize'),
+          isOutgoing: const Value(false),
+          status: const Value('sent'),
+          createdAt: Value(timestamp),
+        ),
+      );
     },
     onChunkReceived: (transferId, _, bytesReceived) async {
       final db = ref.read(databaseProvider);
@@ -178,8 +189,9 @@ final httpServerProvider = FutureProvider<LanHttpServer?>((ref) async {
 
 // ─── Discovery Service ───
 
-final discoveryServiceProvider =
-    FutureProvider<NsdDiscoveryService?>((ref) async {
+final discoveryServiceProvider = FutureProvider<HybridDiscoveryService?>((
+  ref,
+) async {
   if (kIsWeb) return null;
 
   final port = await ref.watch(serverPortProvider.future);
@@ -187,14 +199,13 @@ final discoveryServiceProvider =
 
   final nickname = ref.read(nicknameProvider);
 
-  final service = NsdDiscoveryService(
+  final service = HybridDiscoveryService(
     deviceId: deviceId,
     serverPort: port,
     nickname: nickname.isNotEmpty ? nickname : null,
   );
 
-  await service.startAdvertising();
-  await service.startDiscovery();
+  await service.startAll();
 
   ref.onDispose(() => service.dispose());
   return service;
@@ -202,8 +213,9 @@ final discoveryServiceProvider =
 
 // ─── Discovered Peers Stream ───
 
-final discoveredPeersProvider =
-    StreamProvider<Map<String, DiscoveredPeer>>((ref) async* {
+final discoveredPeersProvider = StreamProvider<Map<String, DiscoveredPeer>>((
+  ref,
+) async* {
   final service = await ref.watch(discoveryServiceProvider.future);
   if (service == null) {
     yield {};
@@ -222,8 +234,10 @@ final dbPeersProvider = StreamProvider<List<Peer>>((ref) {
 
 // ─── Messages for Peer ───
 
-final messagesForPeerProvider =
-    StreamProvider.family<List<Message>, String>((ref, peerId) {
+final messagesForPeerProvider = StreamProvider.family<List<Message>, String>((
+  ref,
+  peerId,
+) {
   final db = ref.watch(databaseProvider);
   return db.messageDao.watchMessagesForPeer(peerId);
 });
@@ -247,7 +261,10 @@ final fileSendServiceProvider = Provider<FileSendService>((ref) {
 final clipboardSyncServiceProvider = Provider<ClipboardSyncService>((ref) {
   final apiClient = ref.read(apiClientProvider);
   final deviceId = ref.read(deviceIdProvider);
-  final service = ClipboardSyncService(apiClient: apiClient, deviceId: deviceId);
+  final service = ClipboardSyncService(
+    apiClient: apiClient,
+    deviceId: deviceId,
+  );
   ref.onDispose(() => service.dispose());
   return service;
 });
