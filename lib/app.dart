@@ -3,15 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/screens/home/home_screen.dart';
 
-class LANShareApp extends StatelessWidget {
-  const LANShareApp({super.key});
+class LocalPulseApp extends StatelessWidget {
+  const LocalPulseApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer(
       builder: (context, ref, _) {
         return MaterialApp(
-          title: 'LANShare',
+          title: 'LocalPulse',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),

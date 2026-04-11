@@ -46,7 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickDownloadDir() async {
-    final result = await FilePicker.platform.getDirectoryPath(
+    final result = await FilePicker.getDirectoryPath(
       dialogTitle: 'Choose download folder',
     );
     if (result == null) return;
@@ -100,7 +100,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Icon(Icons.lan_outlined, color: colorScheme.primary),
+                    Image.asset('assets/logo.png', height: 24, width: 24),
                     const SizedBox(width: 8),
                     Text('${AppConstants.appName} v${AppConstants.version}',
                         style: theme.textTheme.titleMedium),

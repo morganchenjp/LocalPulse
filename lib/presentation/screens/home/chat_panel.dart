@@ -113,7 +113,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
     final peerId = ref.read(selectedPeerIdProvider);
     if (peerId == null) return;
 
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.pickFiles();
     if (result == null || result.files.isEmpty) return;
     final filePath = result.files.single.path;
     if (filePath == null) return;
@@ -422,7 +422,7 @@ class _FileBubble extends ConsumerWidget {
         case 'folder':
           await FileOpener.showInFolder(filePath);
         case 'saveas':
-          final dest = await FilePicker.platform.saveFile(
+          final dest = await FilePicker.saveFile(
             dialogTitle: 'Save As',
             fileName: message.content ?? 'file',
           );

@@ -34,7 +34,7 @@ class FileUtils {
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '.';
-    final dir = Directory('$home/LANShare');
+    final dir = Directory('$home/LocalPulse');
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }

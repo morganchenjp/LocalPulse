@@ -51,6 +51,6 @@ class SettingsService {
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '.';
-    return '$home/LANShare';
+    return '$home/LocalPulse';
   }
 }

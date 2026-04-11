@@ -167,6 +167,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final trailingWidget = trailing;
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -188,7 +189,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ],
           const Spacer(),
-          ?trailing,
+          if (trailingWidget != null) trailingWidget,
         ],
       ),
     );

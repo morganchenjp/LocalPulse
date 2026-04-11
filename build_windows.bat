@@ -1,7 +1,7 @@
 @echo off
-REM LANShare Windows Build Script
+REM LocalPulse Windows Build Script
 REM Run this on a Windows machine with Flutter installed
-REM Output: dist\LANShare-windows-x64.zip
+REM Output: dist\LocalPulse-windows-x64.zip
 
 echo [1/4] Checking Flutter...
 flutter --version
@@ -26,12 +26,12 @@ if errorlevel 1 (
 
 echo [4/4] Packaging ZIP...
 if not exist dist mkdir dist
-powershell -Command "Compress-Archive -Force -Path 'build\windows\x64\runner\Release\*' -DestinationPath 'dist\LANShare-1.0.0-windows-x64.zip'"
+powershell -Command "Compress-Archive -Force -Path 'build\windows\x64\runner\Release\*' -DestinationPath 'dist\LocalPulse-1.0.0-windows-x64.zip'"
 
 echo.
 echo ========================================
 echo   BUILD COMPLETE
-echo   Output: dist\LANShare-1.0.0-windows-x64.zip
+echo   Output: dist\LocalPulse-1.0.0-windows-x64.zip
 echo ========================================
 echo.
-echo To run: Extract ZIP and double-click lan_share.exe
+echo To run: Extract ZIP and double-click local_pulse.exe
