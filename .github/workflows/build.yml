@@ -70,8 +70,33 @@ jobs:
           name: LocalPulse-windows-x64
           path: LocalPulse-windows-x64.zip
 
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Package ZIP
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r LocalPulse-macos-x64.zip Runner.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LocalPulse-macos-x64
+          path: build/macos/Build/Products/Release/LocalPulse-macos-x64.zip
+
   release:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -85,4 +110,5 @@ jobs:
           files: |
             artifacts/LocalPulse-linux-x64/LocalPulse-linux-x64.tar.gz
             artifacts/LocalPulse-windows-x64/LocalPulse-windows-x64.zip
+            artifacts/LocalPulse-macos-x64/LocalPulse-macos-x64.zip
           generate_release_notes: true
