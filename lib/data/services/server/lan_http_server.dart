@@ -13,6 +13,7 @@ class LanHttpServer {
   final _logger = Logger(printer: SimplePrinter());
   final String deviceId;
   final int port;
+  final String bindAddress;
   final MessageHandler messageHandler;
   final FileHandler fileHandler;
   final ClipboardHandler clipboardHandler;
@@ -23,6 +24,7 @@ class LanHttpServer {
   LanHttpServer({
     required this.deviceId,
     required this.port,
+    required this.bindAddress,
     required this.messageHandler,
     required this.fileHandler,
     required this.clipboardHandler,
@@ -71,8 +73,8 @@ class LanHttpServer {
         }))
         .addHandler(router.call);
 
-    _server = await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
-    _logger.i('HTTP Server started on port $port');
+    _server = await shelf_io.serve(handler, InternetAddress(bindAddress), port);
+    _logger.i('HTTP Server started on $bindAddress:$port');
   }
 
   Future<void> stop() async {

@@ -1,6 +1,6 @@
-# lan_share
+# LocalPulse
 
-A new Flutter project.
+A cross-platform Flutter desktop application for LAN-based instant messaging, file transfer, and clipboard synchronization.
 
 ## Getting Started
 
@@ -15,3 +15,31 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Windows Firewall Configuration
+
+LocalPulse uses TCP and UDP ports in the range 53100-53200 for peer discovery and communication. **Windows Defender Firewall may block these connections**, causing peers to fail to detect each other or messages to not be received.
+
+### Required Firewall Rules
+
+**Option 1: Allow through Windows Security**
+1. Open Windows Security → Firewall & network protection
+2. Click "Allow an app through the firewall"
+3. Find and enable your LocalPulse executable
+4. For full functionality, enable for both Private and Public networks
+
+**Option 2: Create inbound rule via PowerShell (Administrator)**
+```powershell
+# TCP ports (required for HTTP server and file transfers)
+New-NetFirewallRule -DisplayName "LocalPulse TCP" -Direction Inbound -Protocol TCP -LocalPort 53100-53200 -Action Allow
+
+# UDP ports (required for peer discovery)
+New-NetFirewallRule -DisplayName "LocalPulse UDP" -Direction Inbound -Protocol UDP -LocalPort 53100-53200 -Action Allow
+```
+
+**Option 3: Disable Firewall (not recommended for production)**
+```powershell
+netsh advfirewall set allprofiles state off
+```
+
+After adding firewall rules, restart LocalPulse for changes to take effect.

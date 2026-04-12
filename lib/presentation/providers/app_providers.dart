@@ -93,6 +93,7 @@ final httpServerProvider = FutureProvider<LanHttpServer?>((ref) async {
 
   final port = await ref.watch(serverPortProvider.future);
   final deviceId = ref.read(deviceIdProvider);
+  final bindAddress = await ref.watch(localIpProvider.future);
 
   final messageHandler = MessageHandler(
     onMessageReceived: (data) async {
@@ -177,6 +178,7 @@ final httpServerProvider = FutureProvider<LanHttpServer?>((ref) async {
   final server = LanHttpServer(
     deviceId: deviceId,
     port: port,
+    bindAddress: bindAddress,
     messageHandler: messageHandler,
     fileHandler: fileHandler,
     clipboardHandler: clipboardHandler,
@@ -194,7 +196,12 @@ final discoveryServiceProvider = FutureProvider<HybridDiscoveryService?>((
 ) async {
   if (kIsWeb) return null;
 
-  final port = await ref.watch(serverPortProvider.future);
+  // Wait for HTTP server to be fully running before starting discovery
+  // This ensures the server is ready to accept incoming connections
+  final server = await ref.watch(httpServerProvider.future);
+  if (server == null) return null;
+
+  final port = server.port;
   final deviceId = ref.read(deviceIdProvider);
 
   final nickname = ref.read(nicknameProvider);

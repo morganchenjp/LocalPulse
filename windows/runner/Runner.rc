@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.lanshare" "\0"
-            VALUE "FileDescription", "lan_share" "\0"
+            VALUE "CompanyName", "net.agileroad" "\0"
+            VALUE "FileDescription", "lanpulse" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "lan_share" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.lanshare. All rights reserved." "\0"
-            VALUE "OriginalFilename", "lan_share.exe" "\0"
-            VALUE "ProductName", "lan_share" "\0"
+            VALUE "InternalName", "lanpulse" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 AgileRoad. All rights reserved." "\0"
+            VALUE "OriginalFilename", "lanpulse.exe" "\0"
+            VALUE "ProductName", "lanpulse" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
