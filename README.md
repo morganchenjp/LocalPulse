@@ -20,13 +20,30 @@ samples, guidance on mobile development, and a full API reference.
 
 LocalPulse uses TCP and UDP ports in the range 53100-53200 for peer discovery and communication. **Windows Defender Firewall may block these connections**, causing peers to fail to detect each other or messages to not be received.
 
+### Check Your Network Profile
+
+Windows categorizes networks as **Public** (blocks most inbound connections) or **Private** (allows local network discovery). Run this in PowerShell to check:
+
+```powershell
+Get-NetConnectionProfile
+```
+
+If your LAN shows `NetworkCategory : Public` and you want to use Private, change it:
+
+```powershell
+Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
+```
+(Replace "Wi-Fi" with your actual network adapter name from `Get-NetAdapter`)
+
 ### Required Firewall Rules
+
+**Important:** If your network is categorized as **Public**, you must allow LocalPulse on **Public** networks, or change the network category to **Private**.
 
 **Option 1: Allow through Windows Security**
 1. Open Windows Security → Firewall & network protection
 2. Click "Allow an app through the firewall"
 3. Find and enable your LocalPulse executable
-4. For full functionality, enable for both Private and Public networks
+4. Enable for **both Private and Public** networks to work regardless of network type
 
 **Option 2: Create inbound rule via PowerShell (Administrator)**
 ```powershell
