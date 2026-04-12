@@ -73,23 +73,38 @@ class HybridDiscoveryService {
   void _mergePeers(Map<String, DiscoveredPeer> newPeers, String source) {
     bool updated = false;
 
+    // Remove peers that are no longer in the newPeers map
+    final removedIds = _allPeers.keys
+        .where((id) => !newPeers.containsKey(id))
+        .toList();
+    for (final id in removedIds) {
+      _allPeers.remove(id);
+      updated = true;
+      _logger.i('Hybrid: Peer removed: $id');
+    }
+
+    // Add or update peers from the newPeers map
     for (final entry in newPeers.entries) {
       final deviceId = entry.key;
       final peer = entry.value;
 
-      // 如果peer不存在，或者来自不同源，则更新
       if (!_allPeers.containsKey(deviceId)) {
         _allPeers[deviceId] = peer;
         updated = true;
         _logger.i('Hybrid: New peer from $source: $peer');
       } else {
-        // 如果peer已存在，更新信息（UDP广播可能提供更新的IP）
-        _allPeers[deviceId] = peer;
-        updated = true;
+        // Only update if data actually changed
+        final existing = _allPeers[deviceId]!;
+        if (existing.ipAddress != peer.ipAddress ||
+            existing.port != peer.port) {
+          _allPeers[deviceId] = peer;
+          updated = true;
+          _logger.i('Hybrid: Peer updated from $source: $peer');
+        }
       }
     }
 
-    // 如果有更新，通知监听者
+    // Only notify if something actually changed
     if (updated) {
       _peersController.add(Map.from(_allPeers));
     }
