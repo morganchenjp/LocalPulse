@@ -46,3 +46,7 @@ app.*.map.json
 
 # Dockerfile (for local dev only)
 Dockerfile
+
+# Git related
+.claude/
+.github/
